@@ -82,6 +82,7 @@ main:
     mov si, msg_boot
     call puts
 
+    cli
     hlt
 
 floppy_error:
@@ -120,7 +121,7 @@ lba_to_chs:
     div word [bdb_sectors_per_track]    ; `ax` = lba / sectors per track
                                         ; `dx` = lba % sectors per track
     inc dx                              ; `dx` = lba % sectors per track + 1 = sector
-    mv  cx, dx
+    mov cx, dx
 
     xor dx, dx
     div word [bdb_heads]                ; `ax` = (lba / sectors per track) / heads
@@ -133,7 +134,7 @@ lba_to_chs:
     pop ax
     mov dl, al
     pop ax
-
+    ret
 
 ; Reads sectors from disk
 ; Parameters:
@@ -179,11 +180,11 @@ disk_read:
 .done:
     popa
 
-    push di
-    push dx
-    push cx
-    push bx
-    push ax                             ; restore modified registers
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax                             ; restore modified registers
     ret
     
 ;
