@@ -32,34 +32,7 @@ ebr_volume_label:                   db 'InfoSecIITR'
 ebr_system_id:                      db 'FAT12   '
 
 start:
-    jmp main
 
-; Print string to the screen
-; Params:
-;   - ds:si points to a string
-
-puts:
-    push si
-    push ax
-
-.loop:
-    lodsb       ; Load byte into the `al` register
-    or al, al   ; Check to see if value is 0. If it is 0 then `flags` register is set
-    jz .done
-
-    mov ah, 0x0e
-    mov bh, 0x0
-    int 0x10
-
-
-    jmp .loop
-
-.done:
-    pop ax
-    pop si
-    ret
-
-main:
     ; Initialise the value of `ds` and `es` registers
     mov ax, 0
     mov ds, ax
@@ -69,18 +42,26 @@ main:
     mov ss, ax
     mov sp, 0x7C00
 
+    push es
+    push word .after
+    retf
+.after:
+
+
     ; Read something from floppy disk
     ; BIOS should set `dl` to drive number
     mov [ebr_drive_number], dl
 
-    mov ax, 1                           ; LBA = 1, second sector from disk
-    mov cl, 1                           ; 1 sector to read
-    mov bx, 7E00h                       ; data should be after the bootloader
-    call disk_read
-
     ; Print the boot message
     mov si, msg_boot
     call puts
+
+    ; read drive parameters
+    push es
+    mov ah, 08h
+    int 13h
+    jc  floppy_error
+    pop es
 
     cli
     hlt
@@ -202,7 +183,7 @@ disk_reset:
     popa
     ret
 
-msg_boot: db "Hello World!",ENDL,0
+msg_boot: db "Booting Up.....",ENDL,0
 msg_read_fail: db "Read from disk failed",ENDL,0
 
 times 510-($-$$) db 0
