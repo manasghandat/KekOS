@@ -63,11 +63,73 @@ start:
     jc  floppy_error
     pop es
 
+    and cl, 0x3F
+    xor ch, ch
+    mov [bdb_sectors_per_track], cx
+
+    inc dh
+    mov [bdb_heads], dh
+
+    ; compute LBA of root directory = reserved + fats * sectors_per_fat
+    mov ax, [bdb_sectors_per_fat]
+    mov bl, [bdb_fat_count]
+    xor bh, bh
+    mul bx                              ; `ax` = (fats * sectors_per_fat)
+    add ax, [bdb_reserved_sectors]      ; `ax` = LBA of root directory
+    push ax
+
+    ; compute size of root directory = (32 * number_of_entries) / bytes per sector
+    mov ax, [bdb_sectors_per_fat]
+    shl ax, 5                           ; `ax` *= 32
+    xor dx, dx                          ; `dx` = 0
+    div word, [bdb_bytes_per_sector]    ; number of sectors we need to read
+
+    test dx, dx                         ; if `dx` != 0, add 1
+    jz root_dir_after                   
+    inc ax                              ; division remainder != 0
+
+.root_dir_after:
+    
+    mov cl, al                          ; `cl` = number of sectors to read = size of root dir
+    pop ax                              ; `ax` = LBA of root dir
+    mov dl, [ebr_drive_number]          ; `dl` = drive number
+    mov bx, buffer                      ; `es:bx` = buffer
+    call disk_read
+
+    ; search for kernel.bin
+    xor bx, bx
+    mov di, buffer
+
+.search_kernel:
+
+    mov si, file_kernel_bin
+    mov cx, 11
+    push di
+    repe cmpsb
+    pop di
+    je .found_kernel
+
+    add di, 32
+    inc bx
+    cmp bx, [bdb_dir_entries_count]
+    jl .search_kernel
+
+    jmp kernel_not_found_error
+
+.found_kernel:
+
+    
+
     cli
     hlt
 
 floppy_error:
     mov si, msg_read_fail
+    call puts
+    jmp wait_key_and_reboot
+
+kernel_not_found_error:
+    mov si, msg_kernel_not_found
     call puts
     jmp wait_key_and_reboot
 
@@ -183,8 +245,12 @@ disk_reset:
     popa
     ret
 
-msg_boot: db "Booting Up.....",ENDL,0
-msg_read_fail: db "Read from disk failed",ENDL,0
+msg_boot:               db "Booting Up.....",ENDL,0
+msg_read_fail:          db "Read from disk failed",ENDL,0
+msg_kernel_not_found:   db "Kernel.BIN not found",ENDL,0
+file_kernel_bin:        db "KERNEL  BIN"
 
 times 510-($-$$) db 0
 dw 0AA55h
+
+buffer:
