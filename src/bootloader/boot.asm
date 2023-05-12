@@ -118,6 +118,63 @@ start:
 
 .found_kernel:
 
+    mov ax, [di + 26]
+    mov [kernel_cluster], ax
+
+    ; load FAT from disk into memory
+    mov ax, [bdb_reserved_sectors]
+    mov bx, buffer
+    mov cl, [sectors_per_fat]
+    moc dl, [ebr_drive_number]
+    call disk_read
+
+    ; read kernel and process FAT chain
+    mov bx, KERNEL_LOAD_SEGMENT
+    mov es, bx
+    mov bx, KERNEL_LOAD_OFFSET
+
+.load_kernel_loop:
+
+    ; Read next cluster
+    mov ax, [kernel_cluster]
+    add ax, 31
+
+    mov cl, 1
+    mov dl, [ebr_drive_number]
+    call disk_read
+
+    add bx, [bdb_bytes_per_sector]
+
+    ; compute location of next cluster
+    mov ax, [kernel_cluster]
+    mov cx, 3
+    mul cx
+    mov cx, 2
+    div cx
+
+    mov si, buffer
+    add si, ax
+    mov ax, [ds:si]
+
+    or dx, dx
+    jz .even
+
+.odd:
+    shr ax, 4
+    jmp .next_cluster_after
+
+.even:
+    add ax, 0x0FFF
+
+.next_cluster_after:
+    cmp ax, 0x0FF8
+    jae .read_finish
+
+    mov [kernel_cluster], ax
+    jmp .load_kernel_loop
+
+.read_finish:
+
     
 
     cli
@@ -249,6 +306,10 @@ msg_boot:               db "Booting Up.....",ENDL,0
 msg_read_fail:          db "Read from disk failed",ENDL,0
 msg_kernel_not_found:   db "Kernel.BIN not found",ENDL,0
 file_kernel_bin:        db "KERNEL  BIN"
+kernel_cluster:         dw 0
+
+KERNEL_LOAD_SEGMENT     equ 0x2000
+KERNEL_LOAD_OFFSET      equ 0x0
 
 times 510-($-$$) db 0
 dw 0AA55h
