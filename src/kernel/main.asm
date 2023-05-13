@@ -1,54 +1,45 @@
-org 0x7C00
+org 0x0
 bits 16
 
-%define ENDL 0x0D,0x0A
+
+%define ENDL 0x0D, 0x0A
+
 
 start:
-    jmp main
+    ; print hello world message
+    mov si, msg_hello
+    call puts
 
-; Print string to the screen
+.halt:
+    cli
+    hlt
+
+;
+; Prints a string to the screen
 ; Params:
-;   - ds:si points to a string
-
+;   - ds:si points to string
+;
 puts:
+    ; save registers we will modify
     push si
     push ax
+    push bx
 
 .loop:
-    lodsb       ; Load byte into the `al` register
-    or al, al   ; Check to see if value is 0. If it is 0 then `flags` register is set
+    lodsb               ; loads next character in al
+    or al, al           ; verify if next character is null?
     jz .done
 
-    mov ah, 0x0e
-    mov bh, 0x0
+    mov ah, 0x0E        ; call bios interrupt
+    mov bh, 0           ; set page number to 0
     int 0x10
-
 
     jmp .loop
 
 .done:
+    pop bx
     pop ax
-    pop si
+    pop si    
     ret
 
-main:
-    ; Initialise the value of `ds` and `es` registers
-    mov ax, 0
-    mov ds, ax
-    mov es, ax
-
-    ; Setup the program stack
-    mov ss, ax
-    mov sp, 0x7C00
-    mov si, msg_boot
-    call puts
-
-    hlt
-
-.halt:
-    jmp .halt
-
-msg_boot: db "Hello World!",ENDL,0
-
-times 510-($-$$) db 0
-dw 0AA55h
+msg_hello: db 'Hello world from KERNEL!', ENDL, 0

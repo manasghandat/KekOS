@@ -82,10 +82,10 @@ start:
     mov ax, [bdb_sectors_per_fat]
     shl ax, 5                           ; `ax` *= 32
     xor dx, dx                          ; `dx` = 0
-    div word, [bdb_bytes_per_sector]    ; number of sectors we need to read
+    div word [bdb_bytes_per_sector]    ; number of sectors we need to read
 
     test dx, dx                         ; if `dx` != 0, add 1
-    jz root_dir_after                   
+    jz .root_dir_after                   
     inc ax                              ; division remainder != 0
 
 .root_dir_after:
@@ -124,8 +124,8 @@ start:
     ; load FAT from disk into memory
     mov ax, [bdb_reserved_sectors]
     mov bx, buffer
-    mov cl, [sectors_per_fat]
-    moc dl, [ebr_drive_number]
+    mov cl, [bdb_sectors_per_fat]
+    mov dl, [ebr_drive_number]
     call disk_read
 
     ; read kernel and process FAT chain
@@ -175,10 +175,24 @@ start:
 
 .read_finish:
 
-    
+    ; jump to kernel
+    mov dl, [ebr_drive_number]
+
+    ; set segment register
+    mov ax, KERNEL_LOAD_SEGMENT
+    mov ds, ax
+    mov es, ax
+
+    jmp KERNEL_LOAD_SEGMENT:KERNEL_LOAD_OFFSET
+
+    jmp wait_key_and_reboot
 
     cli
     hlt
+
+;
+; Error handlers
+;
 
 floppy_error:
     mov si, msg_read_fail
@@ -203,6 +217,31 @@ wait_key_and_reboot:
     cli                                 ; disable interrupts
                                         ; THis way CPU cant get out of halt state
     hlt
+
+; Prints string to the screen
+; Parameters:
+;   - ds:si : points to the string
+
+puts:
+    push si
+    push ax
+
+.loop:
+    lodsb       ; Load byte into the `al` register
+    or al, al   ; Check to see if value is 0. If it is 0 then `flags` register is set
+    jz .done
+
+    mov ah, 0x0e
+    mov bh, 0x0
+    int 0x10
+
+
+    jmp .loop
+
+.done:
+    pop ax
+    pop si
+    ret
 
 ; Converts an LBA address to CHS address
 ; Parameters:
