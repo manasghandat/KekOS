@@ -1,6 +1,8 @@
 ASM = nasm
 
 CC = gcc
+CC16 = /usr/bin/watcom/binl64/wcc
+LD16 = /usr/bin/watcom/binl64/wlink
 
 SRC_DIR = src
 BUILD_DIR = build
@@ -25,11 +27,20 @@ $(BUILD_DIR)/main_floppy.img: bootloader kernel
 # Bootloader
 #
 
-bootloader: $(BUILD_DIR)/bootloader.bin
+bootloader: stage1 stage2
 
 $(BUILD_DIR)/bootloader.bin: always
 	$(ASM) $(SRC_DIR)/bootloader/boot.asm -f bin -o $(BUILD_DIR)/bootloader.bin
 
+stage1: $(BUILD_DIR)/stage1.bin
+
+$(BUILD_DIR)/stage1.bin: always
+	$(MAKE) -C $(SRC_DIR)/bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR))
+
+stage2: $(BUILD_DIR)/stage2.bin
+
+$(BUILD_DIR)/stage2.bin: always
+	$(MAKE) -C $(SRC_DIR)/bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR))
 
 #
 # Kernel
@@ -61,4 +72,7 @@ always:
 #
 
 clean:
+	$(MAKE) -C $(SRC_DIR)/bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR)) clean
+	$(MAKE) -C $(SRC_DIR)/bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR)) clean
+	$(MAKE) -C $(SRC_DIR)/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	rm -rf $(BUILD_DIR)/*
