@@ -25,6 +25,15 @@ void puts(const char* str)
     }
 }
 
+void puts_f(const char far* str)
+{
+    while (*str)
+    {
+        putc(*str);
+        *str++;
+    }
+}
+
 #define PRINTF_STATE_NORMAL 0
 #define PRINTF_STATE_LENGTH 1
 #define PRINTF_STATE_LENGTH_SHORT 2
@@ -63,15 +72,73 @@ void printf(const char* fmt,...)
             switch (*fmt)
             {
                 case 'h':
-
+                length = PRINTF_LENGTH_SHORT;
+                state = PRINTF_STATE_LENGTH_SHORT;
+                break;
+                
+                case 'l':
+                length = PRINTF_LENGTH_LONG;
+                state = PRINTF_STATE_LENGTH_LONG;
                 break;
 
-                case 'l':
+                default:
+                goto PRINTF_STATE_SPEC_;
+            }
+            break;
 
+        case PRINTF_STATE_LENGTH_LONG:
+            if(*fmt == 'l')
+            {
+                state = PRINTF_STATE_SPEC;
+                length = PRINTF_LENGTH_LONG_LONG;
+            }
+            else
+            {
+                goto PRINTF_STATE_SPEC_;
+            }
+            break;
+
+        case PRINTF_STATE_LENGTH_SHORT:
+            if(*fmt == 'h')
+            {
+                state = PRINTF_STATE_SPEC;
+                length = PRINTF_LENGTH_SHORT_SHORT;
+            }
+            else
+            {
+                goto PRINTF_STATE_SPEC_;
+            }
+            break;
+
+        case PRINTF_STATE_SPEC:
+            PRINTF_STATE_SPEC_:
+            switch (*fmt)
+            {
+            case 'c':
+                putc((char *)*argp);
+                argp++;
+                break;
+
+            case 's':
+                if (length == PRINTF_LENGTH_LONG_LONG || length == PRINTF_LENGTH_LONG)
+                {
+                    puts_f(*(const char far**)argp);
+                    argp+=2;
+                }
+                else
+                {
+                    puts(*(const char*)argp);
+                    argp++;
+                }
+                break;
+            case '%':
+                putc('%');
+                break;
+
+            default:
                 break;
             }
 
-            break;
         }
         fmt++;
     }
