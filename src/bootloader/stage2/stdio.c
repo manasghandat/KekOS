@@ -34,6 +34,8 @@ void puts_f(const char far* str)
     }
 }
 
+int* printf_nummber(int *argp, int length, bool sign, int radix);
+
 #define PRINTF_STATE_NORMAL 0
 #define PRINTF_STATE_LENGTH 1
 #define PRINTF_STATE_LENGTH_SHORT 2
@@ -51,7 +53,9 @@ void printf(const char* fmt,...)
     int* argp = (int *)&fmt;
     argp++;
     int state = PRINTF_STATE_NORMAL;
-    int length;
+    int length = PRINTF_LENGTH_DEFAULT;
+    int radix = 10;
+    bool sign = false; 
     while (*fmt)
     {
         switch (state)
@@ -135,12 +139,123 @@ void printf(const char* fmt,...)
                 putc('%');
                 break;
 
+            case 'd':
+            case 'l':
+                radix = 10;
+                sign = true;
+                argp = printf_number(argp,length,sign,radix);
+                break;
+
+            case 'u':
+                radix = 10;
+                sign = false;
+                argp = printf_number(argp,length,sign,radix);
+                break;
+
+            case 'X':
+            case 'x':
+            case 'p':
+                radix = 16;
+                sign = false;
+                argp = printf_number(argp,length,sign,radix);
+                break;
+
+            case 'o':
+                radix = 8;
+                sign = false;
+                argp = printf_number(argp,length,sign,radix);
+                break;
+
             default:
                 break;
             }
+
+            state = PRINTF_STATE_NORMAL;
+            length = PRINTF_LENGTH_DEFAULT;
+            radix = 10;
+            sign = false;
+            break;
 
         }
         fmt++;
     }
     
+}
+
+const char g_HexChars[] = "0123456789abcdef";
+
+int* printf_nummber(int *argp, int length, bool sign, int radix)
+{
+    char buf[0x20];
+    unsigned long long number;
+    int number_signed = 1;
+    int pos = 0;
+
+    switch (length)
+    {
+        case PRINTF_LENGTH_SHORT_SHORT:
+        case PRINTF_LENGTH_SHORT:
+        case PRINTF_LENGTH_DEFAULT:
+            if(sign)
+            {
+                int n = *argp;
+                if(n < 0)
+                {
+                    n = -n;
+                    number_signed = -1;
+                }
+                number = (unsigned long long)n;
+            }
+            else
+            {
+                number = *(unsigned int*)argp;
+            }
+            argp++;
+            break;
+        
+        case PRINTF_LENGTH_LONG:
+            if(sign)
+            {
+                long int n = *(long int*)argp;
+                if(n < 0)
+                {
+                    n = -n;
+                    number_signed = -1;
+                }
+                number = (unsigned long long)n;
+            }
+            else
+            {
+                number = *(unsigned long int*)argp;
+            }
+            argp += 2;
+            break;
+            
+        case PRINTF_LENGTH_LONG_LONG:
+            if(sign)
+            {
+                long long int n = *(long long int*)argp;
+                if(n < 0)
+                {
+                    n = -n;
+                    number_signed = -1;
+                }
+                number = (unsigned long long)n;
+            }
+            else
+            {
+                number = *(unsigned long long int*)argp;
+            }
+            argp += 4;
+            break;
+        
+    }
+
+    do
+    {
+        
+    } while (number > 0);
+    
+
+
 }
