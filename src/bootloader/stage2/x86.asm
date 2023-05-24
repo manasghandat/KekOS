@@ -26,6 +26,10 @@ _x86_div64_32:
     mov eax, [bp + 4]
     div ecx
 
+    mov [bx], eax
+    mov bx, [bp + 18]
+    mov [bx], edx
+
     ; restore call frame
     pop bx
     mov bp, sp
