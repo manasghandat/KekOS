@@ -211,7 +211,6 @@ wait_key_and_reboot:
     jmp 0FFFFh:0                        ; jump to the beginning of bios.
                                         ; This will reboot the system 
 
-    hlt
 
 .halt:
     cli                                 ; disable interrupts
